@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 include(GenerateExportHeader)
 include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
-project(Zydis VERSION 3.0.0.0 LANGUAGES C CXX)
+project(Zydis VERSION 3.1.0.0 LANGUAGES C CXX)
 
 # =============================================================================================== #
 # Overridable options                                                                             #
@@ -38,25 +39,32 @@ option(ZYDIS_BUILD_TOOLS
 option(ZYDIS_FUZZ_AFL_FAST
     "Enables AFL persistent mode and reduces prints in ZydisFuzzIn"
     OFF)
+option(ZYDIS_LIBFUZZER
+    "Enables LLVM libfuzzer mode and reduces prints in ZydisFuzzIn"
+    OFF)
+set(ZYDIS_ZYCORE_PATH
+    "${CMAKE_CURRENT_LIST_DIR}/dependencies/zycore"
+    CACHE
+    PATH
+    "The path to look for Zycore")
 
 # =============================================================================================== #
 # Dependencies                                                                                    #
 # =============================================================================================== #
 
-if (NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/dependencies/zycore/CMakeLists.txt")
+if (NOT EXISTS "${ZYDIS_ZYCORE_PATH}/CMakeLists.txt")
     message(
         FATAL_ERROR
         "Can't find zycore submodule. Please make sure to clone the repo recursively.\n"
         "You can fix this by running\n"
         "    git submodule update --init\n"
         "or by cloning using\n"
-        "    git clone --recursive <url>"
+        "    git clone --recursive <url>\n"
+        "Alternatively, you can manually clone zycore to some path and set ZYDIS_ZYCORE_PATH."
     )
 endif ()
 
-# add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/../zycore-c" "${CMAKE_BINARY_DIR}/zycore"
-#     EXCLUDE_FROM_ALL)
-add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/dependencies/zycore" EXCLUDE_FROM_ALL)
+add_subdirectory(${ZYDIS_ZYCORE_PATH} "zycore" EXCLUDE_FROM_ALL)
 
 # =============================================================================================== #
 # Library configuration                                                                           #
@@ -150,7 +158,15 @@ endif ()
 
 zyan_set_source_group("Zydis")
 
-# TODO: Install CMake config.
+configure_package_config_file(cmake/zydis-config.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/zydis-config.cmake"
+    INSTALL_DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake"
+)
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/zydis-config.cmake"
+    DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake"
+)
+
 install(TARGETS "Zydis"
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -209,7 +225,8 @@ if (ZYDIS_BUILD_EXAMPLES AND NOT ZYAN_NO_LIBC)
         zyan_set_common_flags("ZydisPerfTest")
         zyan_maybe_enable_wpo("ZydisPerfTest")
         _maybe_set_emscripten_cfg("ZydisPerfTest")
-        if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+        if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux"
+                OR ${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
             target_compile_definitions("ZydisPerfTest" PRIVATE "_GNU_SOURCE")
             find_package(Threads REQUIRED)
             target_link_libraries("ZydisPerfTest" Threads::Threads)
@@ -224,7 +241,7 @@ endif ()
 if (ZYDIS_BUILD_TOOLS AND NOT ZYAN_NO_LIBC)
     if (ZYDIS_FEATURE_DECODER AND ZYDIS_FEATURE_FORMATTER AND (NOT ZYDIS_MINIMAL_MODE))
         add_executable("ZydisDisasm" "tools/ZydisDisasm.c")
-        target_link_libraries("ZydisDisasm"  "Zydis")
+        target_link_libraries("ZydisDisasm" "Zydis")
         set_target_properties ("ZydisDisasm" PROPERTIES FOLDER "Tools")
         target_compile_definitions("ZydisDisasm" PRIVATE "_CRT_SECURE_NO_WARNINGS")
         zyan_set_common_flags("ZydisDisasm")
@@ -241,6 +258,9 @@ if (ZYDIS_BUILD_TOOLS AND NOT ZYAN_NO_LIBC)
         _maybe_set_emscripten_cfg("ZydisFuzzIn")
         if (ZYDIS_FUZZ_AFL_FAST)
             target_compile_definitions("ZydisFuzzIn" PRIVATE "ZYDIS_FUZZ_AFL_FAST")
+        endif ()
+        if (ZYDIS_LIBFUZZER)
+            target_compile_definitions("ZydisFuzzIn" PRIVATE "ZYDIS_LIBFUZZER")
         endif ()
 
         add_executable("ZydisInfo" "tools/ZydisInfo.c")

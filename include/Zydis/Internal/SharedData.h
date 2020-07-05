@@ -31,7 +31,7 @@
 #include <Zydis/Mnemonic.h>
 #include <Zydis/Register.h>
 #include <Zydis/SharedTypes.h>
-#include "Zydis/DecoderTypes.h"
+#include <Zydis/DecoderTypes.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,7 +41,7 @@ extern "C" {
 /* Enums and types                                                                                */
 /* ============================================================================================== */
 
-// MSVC does not like types other than (un-)signed int for bitfields
+// MSVC does not like types other than (un-)signed int for bit-fields
 #ifdef ZYAN_MSVC
 #   pragma warning(push)
 #   pragma warning(disable:4214)
@@ -278,11 +278,12 @@ typedef enum ZydisRegisterConstraint_
     ZYDIS_REG_CONSTRAINTS_MASK,
     ZYDIS_REG_CONSTRAINTS_BND,
     ZYDIS_REG_CONSTRAINTS_VSIB,
+    ZYDIS_REG_CONSTRAINTS_NO_REL,
 
     /**
      * @brief   Maximum value of this enum.
      */
-    ZYDIS_REG_CONSTRAINTS_MAX_VALUE = ZYDIS_REG_CONSTRAINTS_VSIB,
+    ZYDIS_REG_CONSTRAINTS_MAX_VALUE = ZYDIS_REG_CONSTRAINTS_NO_REL,
     /**
      * @brief   The minimum number of bits required to represent all values of this enum.
      */

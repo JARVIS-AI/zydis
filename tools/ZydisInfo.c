@@ -744,7 +744,7 @@ static void PrintTokenizedInstruction(const ZydisFormatterToken* token)
     while (ZYAN_SUCCESS(status))
     {
         ZydisTokenType type;
-        char* value;
+        ZyanConstCharPointer value;
         if (!ZYAN_SUCCESS(status = ZydisFormatterTokenGetValue(token, &type, &value)))
         {
             ZYAN_FPRINTF(ZYAN_STDERR, "%sFailed to get token value%s\n",
@@ -1101,18 +1101,18 @@ int main(int argc, char** argv)
     ZyanU8 length = 0;
     for (ZyanU8 i = 0; i < argc - 2; ++i)
     {
-        if (length == ZYDIS_MAX_INSTRUCTION_LENGTH)
-        {
-            ZYAN_FPRINTF(ZYAN_STDERR, "%sMaximum number of %d bytes exceeded%s\n",
-                CVT100_ERR(COLOR_ERROR), ZYDIS_MAX_INSTRUCTION_LENGTH,
-                CVT100_ERR(ZYAN_VT100SGR_RESET));
-            return ZYAN_STATUS_INVALID_ARGUMENT;
-        }
         const ZyanUSize len = ZYAN_STRLEN(argv[i + 2]);
         if (len % 2)
         {
             ZYAN_FPRINTF(ZYAN_STDERR, "%sEven number of hex nibbles expected%s\n",
                 CVT100_ERR(COLOR_ERROR), CVT100_ERR(ZYAN_VT100SGR_RESET));
+            return ZYAN_STATUS_INVALID_ARGUMENT;
+        }
+        if ((len / 2) > ZYDIS_MAX_INSTRUCTION_LENGTH)
+        {
+            ZYAN_FPRINTF(ZYAN_STDERR, "%sMaximum number of %d bytes exceeded%s\n",
+                CVT100_ERR(COLOR_ERROR), ZYDIS_MAX_INSTRUCTION_LENGTH,
+                CVT100_ERR(ZYAN_VT100SGR_RESET));
             return ZYAN_STATUS_INVALID_ARGUMENT;
         }
         for (ZyanU8 j = 0; j < len / 2; ++j)
@@ -1153,7 +1153,7 @@ int main(int argc, char** argv)
     ZYAN_PUTS("");
     PrintSegments(&instruction, &data[0]);
 
-    return ZYAN_STATUS_SUCCESS;
+    return EXIT_SUCCESS;
 }
 
 /* ============================================================================================== */
